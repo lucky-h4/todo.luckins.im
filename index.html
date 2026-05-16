@@ -84,6 +84,7 @@
   .btn:hover { background: var(--bg); }
   .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
   .btn-primary:hover { background: var(--accent-dark); }
+  .btn-icon { padding: 7px 10px; font-size: 1.1rem; line-height: 1; }
   .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 
   /* ── Filters ── */
@@ -377,10 +378,10 @@
     </div>
     <div class="header-right">
       <span id="save-indicator" style="font-size:0.8rem;color:var(--text-muted)"></span>
-      <button class="btn btn-sm btn-print" onclick="window.print()">Print / PDF</button>
-      <button class="btn btn-sm" id="theme-btn" onclick="toggleTheme()">🌙</button>
-      <button class="btn btn-sm" onclick="openSurpriseModal()">🎲 Surprise Me</button>
-      <button class="btn btn-sm" onclick="openSettingsModal()" title="GitHub token settings">⚙️ Token</button>
+      <button class="btn btn-icon btn-print" onclick="window.print()" title="Print / Save as PDF">🖨️</button>
+      <button class="btn btn-icon" id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+      <button class="btn btn-icon" onclick="openSurpriseModal()" title="Surprise Me — pick a random task">🎲</button>
+      <button class="btn btn-icon" onclick="openSettingsModal()" title="GitHub token settings">⚙️</button>
       <button class="btn btn-primary" id="add-btn" onclick="openModal()">+ Add Task</button>
     </div>
   </header>
