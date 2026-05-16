@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Luckins List</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d9488">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Luckins List">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+  :root {
+    --bg: #f0fafa;
+    --surface: #ffffff;
+    --border: #d0e9e8;
+    --text: #0f1f1e;
+    --text-muted: #5c7a79;
+    --accent: #0d9488;
+    --accent-dark: #0f766e;
+    --accent-light: #ccfbf1;
+
+    --cat-garden: #059669;
+    --cat-garden-bg: #d1fae5;
+    --cat-exterior: #0284c7;
+    --cat-exterior-bg: #dbeafe;
+    --cat-internal: #7c3aed;
+    --cat-internal-bg: #ede9fe;
+    --cat-general: #d97706;
+    --cat-general-bg: #fef3c7;
+    --cat-other: #64748b;
+    --cat-other-bg: #f1f5f9;
+
+    --pri-urgent: #dc2626;
+    --pri-urgent-bg: #fee2e2;
+    --pri-soon: #ea580c;
+    --pri-soon-bg: #ffedd5;
+    --pri-year: #0d9488;
+    --pri-year-bg: #ccfbf1;
+    --pri-wish: #64748b;
+    --pri-wish-bg: #f1f5f9;
+
+    --cost-high: #dc2626;
+    --cost-med: #ea580c;
+    --cost-low: #059669;
+    --cost-tbd: #64748b;
+
+    --status-todo: #64748b;
+    --status-progress: #0284c7;
+    --status-done: #059669;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .hidden { display: none !important; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── App shell ── */
+  #app { display: block; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left h1 { font-size: 1.25rem; font-weight: 700; }
+  .header-left span { font-size: 0.8rem; color: var(--text-muted); }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.875rem; cursor: pointer; background: var(--surface); color: var(--text);
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+  /* ── Filters ── */
+  .filters {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+    font-size: 0.8rem; cursor: pointer; background: var(--surface);
+    transition: all 0.15s; user-select: none;
+  }
+  .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ── Main content ── */
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+  .stats-bar {
+    display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 20px; flex: 1; min-width: 120px;
+  }
+  .stat-card .stat-num { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+  .stat-card .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+  .tasks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: box-shadow 0.15s;
+    position: relative;
+  }
+  .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .task-card.status-done { opacity: 0.6; }
+  .task-card.status-done .task-title { text-decoration: line-through; }
+
+  .task-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .task-title { font-weight: 600; font-size: 1rem; line-height: 1.3; flex: 1; }
+  .task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; padding: 4px;
+    border-radius: 6px; color: var(--text-muted); font-size: 1rem;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: var(--bg); color: var(--text); }
+
+  .task-desc { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+
+  .task-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    padding: 3px 9px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;
+  }
+
+  .badge-garden   { background: var(--cat-garden-bg);   color: var(--cat-garden); }
+  .badge-exterior { background: var(--cat-exterior-bg); color: var(--cat-exterior); }
+  .badge-internal { background: var(--cat-internal-bg); color: var(--cat-internal); }
+  .badge-general  { background: var(--cat-general-bg);  color: var(--cat-general); }
+  .badge-other    { background: var(--cat-other-bg);    color: var(--cat-other); }
+
+  .badge-urgent   { background: var(--pri-urgent-bg);  color: var(--pri-urgent); }
+  .badge-soon     { background: var(--pri-soon-bg);    color: var(--pri-soon); }
+  .badge-year     { background: var(--pri-year-bg);    color: var(--pri-year); }
+  .badge-wish     { background: var(--pri-wish-bg);    color: var(--pri-wish); }
+
+  .cost-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .cost-high { color: var(--cost-high); }
+  .cost-med  { color: var(--cost-med); }
+  .cost-low  { color: var(--cost-low); }
+  .cost-tbd  { color: var(--cost-tbd); }
+
+  .task-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px;
+  }
+  .task-date { font-size: 0.75rem; color: var(--text-muted); }
+  .status-select {
+    font-size: 0.78rem; border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 6px; background: var(--surface); cursor: pointer; color: var(--text);
+  }
+
+  .empty-state {
+    grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 16px;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal {
+    background: var(--surface); border-radius: 14px;
+    width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+  }
+  .modal-header {
+    padding: 20px 24px 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h2 { font-size: 1.15rem; }
+  .modal-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 0.85rem; font-weight: 500; }
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.9rem; font-family: inherit; background: var(--surface); color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  .modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 0 24px 24px;
+  }
+
+  /* ── Print styles ── */
+  @media print {
+    body { background: white; }
+    header, .filters, .stats-bar, .task-actions, .task-footer .status-select,
+    #add-btn, .btn-print, #auth-overlay { display: none !important; }
+    header.print-header { display: block !important; }
+    main { padding: 0; max-width: none; }
+    .tasks-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .task-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+    .task-card.status-done { opacity: 1; }
+    .print-title {
+      font-size: 1.4rem; font-weight: 700; padding: 16px 0 8px;
+      border-bottom: 2px solid #ccc; margin-bottom: 16px;
+    }
+    .print-date { font-size: 0.8rem; color: #666; margin-bottom: 20px; }
+  }
+
+  /* ── Floating add button (mobile only) ── */
+  .fab {
+    display: none;
+    position: fixed; bottom: 24px; right: 24px; z-index: 150;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--accent); color: white; border: none;
+    font-size: 1.6rem; line-height: 1; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(13,148,136,0.4);
+    align-items: center; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .fab:active { transform: scale(0.93); box-shadow: 0 2px 8px rgba(13,148,136,0.4); }
+
+  /* ── Surprise modal ── */
+  .surprise-label {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 12px;
+  }
+  .surprise-task {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .surprise-task .task-title { font-size: 1.2rem; font-weight: 700; line-height: 1.3; }
+  .surprise-empty { text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 0.95rem; }
+  .surprise-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 24px 24px; gap: 10px;
+  }
+
+  /* ── Dark mode ── */
+  body.dark {
+    --bg: #0d1f1e;
+    --surface: #162423;
+    --border: #243534;
+    --text: #e2f0ef;
+    --text-muted: #6fa8a5;
+    --accent: #14b8a6;
+    --accent-dark: #0d9488;
+    --accent-light: #1a3533;
+
+    --cat-garden: #34d399;
+    --cat-garden-bg: #0d2e22;
+    --cat-exterior: #60a5fa;
+    --cat-exterior-bg: #0d1e38;
+    --cat-internal: #a78bfa;
+    --cat-internal-bg: #1e1538;
+    --cat-general: #fbbf24;
+    --cat-general-bg: #2d1f08;
+    --cat-other: #94a3b8;
+    --cat-other-bg: #1a2030;
+
+    --pri-urgent: #f87171;
+    --pri-urgent-bg: #2d1010;
+    --pri-soon: #fb923c;
+    --pri-soon-bg: #2d1808;
+    --pri-year: #14b8a6;
+    --pri-year-bg: #0d2a28;
+    --pri-wish: #94a3b8;
+    --pri-wish-bg: #1a2030;
+
+    --cost-high: #f87171;
+    --cost-med: #fb923c;
+    --cost-low: #34d399;
+    --cost-tbd: #94a3b8;
+
+    --status-todo: #94a3b8;
+    --status-progress: #60a5fa;
+    --status-done: #34d399;
+  }
+
+  body.dark header,
+  body.dark .filters { border-color: var(--border); }
+
+  body.dark .btn { background: var(--surface); color: var(--text); border-color: var(--border); }
+  body.dark .btn:hover { background: var(--bg); }
+  body.dark .status-select { background: var(--surface); color: var(--text); border-color: var(--border); }
+  body.dark .form-group input,
+  body.dark .form-group textarea,
+  body.dark .form-group select { background: var(--bg); color: var(--text); border-color: var(--border); }
+
+  @media (max-width: 640px) {
+    /* Header */
+    header { padding: 12px 16px; gap: 8px; }
+    .header-left h1 { font-size: 1.05rem; }
+    #add-btn { display: none; }
+    .fab { display: flex; }
+
+    /* Filters — horizontal scroll, no wrap */
+    .filters {
+      padding: 10px 16px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      gap: 8px;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .filter-label { white-space: nowrap; flex-shrink: 0; }
+    .filter-group { flex-wrap: nowrap; flex-shrink: 0; }
+    .chip { white-space: nowrap; flex-shrink: 0; }
+
+    /* Cards */
+    main { padding: 12px; }
+    .tasks-grid { grid-template-columns: 1fr; gap: 12px; }
+    .stats-bar { gap: 8px; }
+    .stat-card { padding: 10px 14px; min-width: 80px; }
+    .stat-card .stat-num { font-size: 1.3rem; }
+
+    /* Modal — slides up from bottom */
+    .modal-backdrop { align-items: flex-end; padding: 0; }
+    .modal {
+      border-radius: 20px 20px 0 0;
+      max-height: 92vh;
+    }
+    .form-row { grid-template-columns: 1fr; }
+
+    /* Extra bottom padding so FAB doesn't cover last card */
+    main { padding-bottom: 88px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="header-left">
+      <h1>🏠 The Luckins List</h1>
+      <span id="header-subtitle">House &amp; Garden Planner</span>
+    </div>
+    <div class="header-right">
+      <span id="save-indicator" style="font-size:0.8rem;color:var(--text-muted)"></span>
+      <button class="btn btn-sm btn-print" onclick="window.print()">Print / PDF</button>
+      <button class="btn btn-sm" id="theme-btn" onclick="toggleTheme()">🌙</button>
+      <button class="btn btn-sm" onclick="openSurpriseModal()">🎲 Surprise Me</button>
+      <button class="btn btn-sm" onclick="openSettingsModal()" title="GitHub token settings">⚙️ Token</button>
+      <button class="btn btn-primary" id="add-btn" onclick="openModal()">+ Add Task</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <span class="filter-label">Category:</span>
+    <div class="filter-group" id="cat-filters">
+      <span class="chip active" data-filter="cat" data-value="all">All</span>
+      <span class="chip" data-filter="cat" data-value="Garden">Garden</span>
+      <span class="chip" data-filter="cat" data-value="Exterior">Exterior</span>
+      <span class="chip" data-filter="cat" data-value="Internal">Internal</span>
+      <span class="chip" data-filter="cat" data-value="General">General</span>
+      <span class="chip" data-filter="cat" data-value="Other">Other</span>
+    </div>
+    <span class="filter-label" style="margin-left:8px">Priority:</span>
+    <div class="filter-group" id="pri-filters">
+      <span class="chip active" data-filter="pri" data-value="all">All</span>
+      <span class="chip" data-filter="pri" data-value="Urgent">Urgent</span>
+      <span class="chip" data-filter="pri" data-value="Soon">Next few weeks</span>
+      <span class="chip" data-filter="pri" data-value="Year">This year</span>
+      <span class="chip" data-filter="pri" data-value="Wishlist">Wishlist</span>
+    </div>
+    <span class="filter-label" style="margin-left:8px">Status:</span>
+    <div class="filter-group">
+      <span class="chip active" data-filter="status" data-value="all">All</span>
+      <span class="chip" data-filter="status" data-value="todo">To do</span>
+      <span class="chip" data-filter="status" data-value="inprogress">In progress</span>
+      <span class="chip" data-filter="status" data-value="done">Done</span>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openModal()" aria-label="Add task">+</button>
+
+  <main>
+    <div class="print-title" style="display:none" id="print-title">Home Maintenance Planner</div>
+    <div class="print-date" style="display:none" id="print-date"></div>
+
+    <div class="stats-bar" id="stats-bar"></div>
+    <div class="tasks-grid" id="tasks-grid"></div>
+  </main>
+</div>
+
+<!-- Surprise Modal -->
+<div class="modal-backdrop hidden" id="surprise-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🎲 Surprise Me</h2>
+      <button class="icon-btn" onclick="closeSurpriseModal()" style="font-size:1.3rem">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="surprise-label">Your task suggestion</div>
+      <div id="surprise-content"></div>
+    </div>
+    <div class="surprise-footer">
+      <button class="btn" onclick="pickRandomTask()">↩ Pick another</button>
+      <button class="btn btn-primary" onclick="closeSurpriseModal()">Got it!</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop hidden" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>GitHub Token</h2>
+      <button class="icon-btn" onclick="closeSettingsModal()" style="font-size:1.3rem">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.875rem;color:var(--text-muted);line-height:1.5">
+        Your token is saved in this browser only — never in the app file.
+        Generate one at <strong>GitHub → Settings → Developer settings → Personal access tokens</strong> with <strong>Gist</strong> scope.
+      </p>
+      <div class="form-group">
+        <label>Personal Access Token</label>
+        <input type="password" id="s-token" placeholder="ghp_..." autocomplete="off" />
+      </div>
+      <div id="s-error" style="font-size:0.85rem;color:var(--pri-urgent)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-backdrop hidden" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Task</h2>
+      <button class="icon-btn" onclick="closeModal()" style="font-size:1.3rem">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Task headline *</label>
+        <input type="text" id="f-title" placeholder="e.g. Trim and prune hedges" />
+      </div>
+      <div class="form-group">
+        <label>Description / notes</label>
+        <textarea id="f-desc" placeholder="e.g. Requires purchase of new equipment — bypass loppers"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="f-cat">
+            <option value="Garden">Garden</option>
+            <option value="Exterior">Exterior</option>
+            <option value="Internal">Internal</option>
+            <option value="General">General</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="f-pri">
+            <option value="Urgent">Urgent</option>
+            <option value="Soon">Next few weeks</option>
+            <option value="Year">This year</option>
+            <option value="Wishlist">Wishlist</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cost estimate</label>
+          <select id="f-cost">
+            <option value="TBD">TBD</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+const GIST_ID   = '2c4e983ff828888e191cb6e0b1320894';
+const GIST_FILE = 'tasks.json';
+// Token is stored in localStorage — never in this file
+const TOKEN_KEY = 'hp_gh_token';
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+
+// In-memory working copy — all mutations happen here, then pushed to Gist
+let tasks = [];
+
+initTheme();
+init();
+
+// ── Gist API ──────────────────────────────────────────────
+function setSaveIndicator(state) {
+  const el = document.getElementById('save-indicator');
+  const states = { saving: 'Saving…', saved: 'Saved ✓', error: 'Save failed ✗', loading: 'Loading…' };
+  el.textContent = states[state] || '';
+  if (state === 'saved') setTimeout(() => { if (el.textContent === 'Saved ✓') el.textContent = ''; }, 2500);
+}
+
+async function fetchTasks() {
+  const token = getToken();
+  if (!token) { tasks = seedTasks(); render(); return; }
+  setSaveIndicator('loading');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' }
+    });
+    if (res.status === 401) { openSettingsModal('Token rejected — please enter a new one.'); setSaveIndicator(''); return; }
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const content = data.files[GIST_FILE]?.content;
+    tasks = content ? JSON.parse(content) : seedTasks();
+    setSaveIndicator('');
+  } catch (e) {
+    setSaveIndicator('error');
+    tasks = [];
+  }
+  render();
+}
+
+async function pushTasks() {
+  const token = getToken();
+  if (!token) return;
+  setSaveIndicator('saving');
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(tasks, null, 2) } } })
+    });
+    if (!res.ok) throw new Error(res.status);
+    setSaveIndicator('saved');
+  } catch (e) {
+    setSaveIndicator('error');
+  }
+}
+
+function seedTasks() {
+  return [
+    {
+      id: Date.now(), title: 'Trim and prune hedges',
+      desc: 'Requires purchase of new equipment — bypass loppers and hedge trimmer. Check B&Q first.',
+      cat: 'Garden', pri: 'Soon', cost: 'High', status: 'todo', created: new Date().toISOString()
+    },
+    {
+      id: Date.now() + 1, title: 'Repaint front door',
+      desc: 'Flaking on the lower panels. Sand back and use weatherproof satin finish.',
+      cat: 'Exterior', pri: 'Year', cost: 'Low', status: 'todo', created: new Date().toISOString()
+    }
+  ];
+}
+
+async function init() {
+  if (!getToken()) { openSettingsModal(); return; }
+  await fetchTasks();
+}
+
+// ── Surprise picker ───────────────────────────────────────
+function openSurpriseModal() {
+  document.getElementById('surprise-modal').classList.remove('hidden');
+  pickRandomTask();
+}
+
+function closeSurpriseModal() {
+  document.getElementById('surprise-modal').classList.add('hidden');
+}
+
+function pickRandomTask() {
+  // Prefer tasks that aren't done and aren't wishlist — fall back to all non-done if needed
+  let pool = tasks.filter(t => t.status !== 'done' && t.pri !== 'Wishlist');
+  if (pool.length === 0) pool = tasks.filter(t => t.status !== 'done');
+
+  const el = document.getElementById('surprise-content');
+
+  if (pool.length === 0) {
+    el.innerHTML = `<div class="surprise-empty">🎉 Nothing left to do — all tasks are complete!</div>`;
+    return;
+  }
+
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  el.innerHTML = `
+    <div class="surprise-task">
+      <div class="task-title">${esc(t.title)}</div>
+      ${t.desc ? `<div class="task-desc">${esc(t.desc)}</div>` : ''}
+      <div class="task-badges">
+        <span class="badge badge-${t.cat.toLowerCase()}">${t.cat}</span>
+        <span class="badge badge-${priClass[t.pri]}">${priLabel[t.pri]}</span>
+        <span class="badge ${costClass[t.cost]}">
+          <span class="cost-dot" style="background:currentColor"></span>Cost: ${t.cost}
+        </span>
+      </div>
+    </div>`;
+}
+
+// ── Settings modal ────────────────────────────────────────
+function openSettingsModal(msg = '') {
+  document.getElementById('s-token').value = getToken();
+  document.getElementById('s-error').textContent = msg;
+  document.getElementById('settings-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('s-token').focus(), 50);
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function saveSettings() {
+  const token = document.getElementById('s-token').value.trim();
+  if (!token) { document.getElementById('s-error').textContent = 'Please paste your GitHub token.'; return; }
+  localStorage.setItem(TOKEN_KEY, token);
+  closeSettingsModal();
+  await fetchTasks();
+}
+
+// ── Filters ───────────────────────────────────────────────
+let filters = { cat: 'all', pri: 'all', status: 'all' };
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const group = chip.dataset.filter;
+    document.querySelectorAll(`.chip[data-filter="${group}"]`).forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    filters[group] = chip.dataset.value;
+    render();
+  });
+});
+
+// ── Modal ─────────────────────────────────────────────────
+let editingId = null;
+
+function openModal(id = null) {
+  editingId = id;
+  if (id !== null) {
+    const t = tasks.find(x => x.id === id);
+    document.getElementById('modal-title').textContent = 'Edit Task';
+    document.getElementById('f-title').value = t.title;
+    document.getElementById('f-desc').value = t.desc || '';
+    document.getElementById('f-cat').value = t.cat;
+    document.getElementById('f-pri').value = t.pri;
+    document.getElementById('f-cost').value = t.cost;
+  } else {
+    document.getElementById('modal-title').textContent = 'Add Task';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-cat').value = 'Garden';
+    document.getElementById('f-pri').value = 'Soon';
+    document.getElementById('f-cost').value = 'TBD';
+  }
+  document.getElementById('modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('f-title').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+  editingId = null;
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+async function saveTask() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { document.getElementById('f-title').focus(); return; }
+  const data = {
+    title,
+    desc: document.getElementById('f-desc').value.trim(),
+    cat: document.getElementById('f-cat').value,
+    pri: document.getElementById('f-pri').value,
+    cost: document.getElementById('f-cost').value,
+  };
+  if (editingId !== null) {
+    const idx = tasks.findIndex(x => x.id === editingId);
+    if (idx > -1) tasks[idx] = { ...tasks[idx], ...data };
+  } else {
+    tasks.unshift({ id: Date.now(), ...data, status: 'todo', created: new Date().toISOString() });
+  }
+  closeModal();
+  render();
+  await pushTasks();
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  tasks = tasks.filter(x => x.id !== id);
+  render();
+  await pushTasks();
+}
+
+async function updateStatus(id, status) {
+  const t = tasks.find(x => x.id === id);
+  if (t) { t.status = status; render(); await pushTasks(); }
+}
+
+// ── Render ────────────────────────────────────────────────
+const priLabel = { Urgent: 'Urgent', Soon: 'Next few weeks', Year: 'This year', Wishlist: 'Wishlist' };
+const priClass  = { Urgent: 'urgent', Soon: 'soon', Year: 'year', Wishlist: 'wish' };
+const costClass = { High: 'cost-high', Medium: 'cost-med', Low: 'cost-low', TBD: 'cost-tbd' };
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function render() {
+  const visible = tasks.filter(t => {
+    if (filters.cat    !== 'all' && t.cat    !== filters.cat)    return false;
+    if (filters.pri    !== 'all' && t.pri    !== filters.pri)    return false;
+    if (filters.status !== 'all' && t.status !== filters.status) return false;
+    return true;
+  });
+
+  const todo   = tasks.filter(t => t.status === 'todo').length;
+  const inprog = tasks.filter(t => t.status === 'inprogress').length;
+  const done   = tasks.filter(t => t.status === 'done').length;
+  const urgent = tasks.filter(t => t.pri === 'Urgent' && t.status !== 'done').length;
+
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total tasks</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--status-todo)">${todo}</div><div class="stat-label">To do</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--status-progress)">${inprog}</div><div class="stat-label">In progress</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--status-done)">${done}</div><div class="stat-label">Done</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--pri-urgent)">${urgent}</div><div class="stat-label">Urgent outstanding</div></div>
+  `;
+
+  if (visible.length === 0) {
+    document.getElementById('tasks-grid').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No tasks match your filters.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('tasks-grid').innerHTML = visible.map(t => `
+    <div class="task-card status-${t.status}">
+      <div class="task-header">
+        <div class="task-title">${esc(t.title)}</div>
+        <div class="task-actions">
+          <button class="icon-btn" title="Edit" onclick="openModal(${t.id})">✏️</button>
+          <button class="icon-btn" title="Delete" onclick="deleteTask(${t.id})">🗑️</button>
+        </div>
+      </div>
+      ${t.desc ? `<div class="task-desc">${esc(t.desc)}</div>` : ''}
+      <div class="task-badges">
+        <span class="badge badge-${t.cat.toLowerCase()}">${t.cat}</span>
+        <span class="badge badge-${priClass[t.pri]}">${priLabel[t.pri]}</span>
+        <span class="badge ${costClass[t.cost]}">
+          <span class="cost-dot" style="background:currentColor"></span>Cost: ${t.cost}
+        </span>
+      </div>
+      <div class="task-footer">
+        <span class="task-date">Added ${fmtDate(t.created)}</span>
+        <select class="status-select" onchange="updateStatus(${t.id}, this.value)">
+          <option value="todo"       ${t.status==='todo'?'selected':''}>To do</option>
+          <option value="inprogress" ${t.status==='inprogress'?'selected':''}>In progress</option>
+          <option value="done"       ${t.status==='done'?'selected':''}>Done</option>
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('print-date').textContent =
+    `Printed ${new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}`;
+}
+
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Theme ─────────────────────────────────────────────────
+function initTheme() {
+  const dark = localStorage.getItem('hp_theme') === 'dark';
+  document.body.classList.toggle('dark', dark);
+  document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+  const dark = document.body.classList.toggle('dark');
+  localStorage.setItem('hp_theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+}
+
+// ── Service worker registration ───────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "The Luckins List",
+  "short_name": "Luckins List",
+  "description": "Luckins house and garden planner",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0fafa",
+  "theme_color": "#0d9488",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
