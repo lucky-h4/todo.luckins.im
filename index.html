@@ -515,13 +515,8 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Cost estimate</label>
-          <select id="f-cost">
-            <option value="TBD">TBD</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-          </select>
+          <label>Cost estimate (£) <span style="font-weight:400;color:var(--text-muted)">— leave blank if unknown, 0 = no cost</span></label>
+          <input type="number" id="f-cost" min="0" step="1" placeholder="e.g. 150" />
         </div>
         <div class="form-group">
           <label>Due date <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
@@ -659,8 +654,8 @@ function pickRandomTask() {
       <div class="task-badges">
         <span class="badge badge-${t.cat.toLowerCase()}">${t.cat}</span>
         <span class="badge badge-${priClass[t.pri]}">${priLabel[t.pri]}</span>
-        <span class="badge ${costClass[t.cost]}">
-          <span class="cost-dot" style="background:currentColor"></span>Cost: ${t.cost}
+        <span class="badge ${costBadge(t.cost).cls}">
+          <span class="cost-dot" style="background:currentColor"></span>${costBadge(t.cost).label}
         </span>
         <span class="badge badge-${(t.assigned||'Both').toLowerCase()}">${t.assigned || 'Both'}</span>
       </div>
@@ -712,7 +707,8 @@ function openModal(id = null) {
     document.getElementById('f-desc').value = t.desc || '';
     document.getElementById('f-cat').value = t.cat;
     document.getElementById('f-pri').value = t.pri;
-    document.getElementById('f-cost').value = t.cost;
+    const n = parseFloat(t.cost);
+    document.getElementById('f-cost').value = isNaN(n) ? '' : n;
     document.getElementById('f-due').value = t.dueDate || '';
     document.getElementById('f-person').value = t.assigned || 'Both';
   } else {
@@ -721,7 +717,7 @@ function openModal(id = null) {
     document.getElementById('f-desc').value = '';
     document.getElementById('f-cat').value = 'Garden';
     document.getElementById('f-pri').value = 'Soon';
-    document.getElementById('f-cost').value = 'TBD';
+    document.getElementById('f-cost').value = '';
     document.getElementById('f-due').value = '';
     document.getElementById('f-person').value = 'Both';
   }
@@ -750,7 +746,7 @@ async function saveTask() {
     desc: document.getElementById('f-desc').value.trim(),
     cat: document.getElementById('f-cat').value,
     pri: document.getElementById('f-pri').value,
-    cost: document.getElementById('f-cost').value,
+    cost: document.getElementById('f-cost').value !== '' ? parseFloat(document.getElementById('f-cost').value) : null,
     dueDate: document.getElementById('f-due').value || null,
     assigned: document.getElementById('f-person').value,
   };
@@ -785,7 +781,17 @@ async function updateStatus(id, status) {
 // ── Render ────────────────────────────────────────────────
 const priLabel = { Urgent: 'Urgent', Soon: 'Next few weeks', Year: 'This year', Wishlist: 'Wishlist' };
 const priClass  = { Urgent: 'urgent', Soon: 'soon', Year: 'year', Wishlist: 'wish' };
-const costClass = { High: 'cost-high', Medium: 'cost-med', Low: 'cost-low', TBD: 'cost-tbd' };
+function costBadge(cost) {
+  const n = parseFloat(cost);
+  if (!isNaN(n) && cost !== null && cost !== '') {
+    if (n === 0) return { cls: 'cost-tbd',  label: 'No cost' };
+    if (n < 200) return { cls: 'cost-low',  label: `£${n.toLocaleString()}` };
+    if (n < 500) return { cls: 'cost-med',  label: `£${n.toLocaleString()}` };
+    return             { cls: 'cost-high', label: `£${n.toLocaleString()}` };
+  }
+  const legacy = { Low: 'cost-low', Medium: 'cost-med', High: 'cost-high' };
+  return { cls: legacy[cost] || 'cost-tbd', label: cost || 'TBD' };
+}
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -807,11 +813,15 @@ function render() {
   const inprog = tasks.filter(t => t.status === 'inprogress').length;
   const done   = tasks.filter(t => t.status === 'done').length;
   const urgent = tasks.filter(t => t.pri === 'Urgent' && t.status !== 'done').length;
-  const costMap = { Low: 50, Medium: 250, High: 800, TBD: 0 };
+  const legacyMap = { Low: 50, Medium: 250, High: 800 };
   const costTotal = tasks
     .filter(t => t.status !== 'done')
-    .reduce((sum, t) => sum + (costMap[t.cost] || 0), 0);
-  const costStr = costTotal === 0 ? '—' : `~£${costTotal.toLocaleString()}`;
+    .reduce((sum, t) => {
+      const n = parseFloat(t.cost);
+      return sum + (isNaN(n) ? (legacyMap[t.cost] || 0) : n);
+    }, 0);
+  const hasUnknown = tasks.filter(t => t.status !== 'done').some(t => t.cost === null || t.cost === undefined || t.cost === 'TBD');
+  const costStr = costTotal === 0 && hasUnknown ? 'TBD' : `£${costTotal.toLocaleString()}${hasUnknown ? '+' : ''}`;
 
   document.getElementById('stats-bar').innerHTML = `
     <div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total tasks</div></div>
@@ -860,8 +870,8 @@ function render() {
       <div class="task-badges">
         <span class="badge badge-${t.cat.toLowerCase()}">${t.cat}</span>
         <span class="badge badge-${priClass[t.pri]}">${priLabel[t.pri]}</span>
-        <span class="badge ${costClass[t.cost]}">
-          <span class="cost-dot" style="background:currentColor"></span>Cost: ${t.cost}
+        <span class="badge ${costBadge(t.cost).cls}">
+          <span class="cost-dot" style="background:currentColor"></span>${costBadge(t.cost).label}
         </span>
         <span class="badge badge-${(t.assigned||'Both').toLowerCase()}">${t.assigned || 'Both'}</span>
       </div>
