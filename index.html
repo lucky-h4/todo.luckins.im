@@ -112,9 +112,22 @@
   .stat-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; padding: 14px 20px; flex: 1; min-width: 120px;
+    cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+    user-select: none;
   }
+  .stat-card:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(13,148,136,0.15); }
+  .stat-card.active { border-color: var(--accent); background: rgba(13,148,136,0.08); }
   .stat-card .stat-num { font-size: 1.6rem; font-weight: 700; line-height: 1; }
   .stat-card .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(13,148,136,0), 0 4px 16px rgba(0,0,0,0.08); }
+    50%       { box-shadow: 0 0 0 4px rgba(13,148,136,0.25), 0 4px 20px rgba(13,148,136,0.2); }
+  }
+  .task-card.status-inprogress {
+    border-color: var(--accent);
+    animation: glow-pulse 2.4s ease-in-out infinite;
+  }
 
   .tasks-grid {
     display: grid;
@@ -699,6 +712,26 @@ async function saveSettings() {
 // ── Filters ───────────────────────────────────────────────
 let filters = { cat: 'all', pri: 'all', status: 'all', person: 'all' };
 
+function applyStatFilter(group, value) {
+  if (group === 'status' && value === 'all') {
+    filters.status = 'all';
+    filters.pri = 'all';
+  } else {
+    filters[group] = value;
+    if (group === 'status') filters.pri = 'all';
+    if (group === 'pri')    filters.status = 'all';
+  }
+  document.querySelectorAll(`.chip[data-filter="${group}"]`).forEach(c => {
+    c.classList.toggle('active', c.dataset.value === value);
+  });
+  if (group === 'pri') {
+    document.querySelectorAll('.chip[data-filter="status"]').forEach(c => {
+      c.classList.toggle('active', c.dataset.value === 'all');
+    });
+  }
+  render();
+}
+
 document.querySelectorAll('.chip').forEach(chip => {
   chip.addEventListener('click', () => {
     const group = chip.dataset.filter;
@@ -824,6 +857,10 @@ function render() {
       if (a !== 'Both' && a !== filters.person) return false;
     }
     return true;
+  }).sort((a, b) => {
+    const aip = a.status === 'inprogress' ? 0 : 1;
+    const bip = b.status === 'inprogress' ? 0 : 1;
+    return aip - bip;
   });
 
   const todo   = tasks.filter(t => t.status === 'todo').length;
@@ -840,13 +877,14 @@ function render() {
   const hasUnknown = tasks.filter(t => t.status !== 'done').some(t => t.cost === null || t.cost === undefined || t.cost === 'TBD');
   const costStr = costTotal === 0 && hasUnknown ? 'TBD' : `£${costTotal.toLocaleString()}${hasUnknown ? '+' : ''}`;
 
+  const sf = filters.status, pf = filters.pri;
   document.getElementById('stats-bar').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total tasks</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--status-todo)">${todo}</div><div class="stat-label">To do</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--status-progress)">${inprog}</div><div class="stat-label">In progress</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--status-done)">${done}</div><div class="stat-label">Done</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--pri-urgent)">${urgent}</div><div class="stat-label">Urgent outstanding</div></div>
-    <div class="stat-card"><div class="stat-num" style="font-size:1.2rem">${costStr}</div><div class="stat-label">Est. outstanding cost</div></div>
+    <div class="stat-card${sf==='all'&&pf==='all'?' active':''}" onclick="applyStatFilter('status','all')"><div class="stat-num">${tasks.length}</div><div class="stat-label">Total tasks</div></div>
+    <div class="stat-card${sf==='todo'?' active':''}" onclick="applyStatFilter('status','todo')"><div class="stat-num" style="color:var(--status-todo)">${todo}</div><div class="stat-label">To do</div></div>
+    <div class="stat-card${sf==='inprogress'?' active':''}" onclick="applyStatFilter('status','inprogress')"><div class="stat-num" style="color:var(--status-progress)">${inprog}</div><div class="stat-label">In progress</div></div>
+    <div class="stat-card${sf==='done'?' active':''}" onclick="applyStatFilter('status','done')"><div class="stat-num" style="color:var(--status-done)">${done}</div><div class="stat-label">Done</div></div>
+    <div class="stat-card${pf==='Urgent'?' active':''}" onclick="applyStatFilter('pri','Urgent')"><div class="stat-num" style="color:var(--pri-urgent)">${urgent}</div><div class="stat-label">Urgent outstanding</div></div>
+    <div class="stat-card" style="cursor:default"><div class="stat-num" style="font-size:1.2rem">${costStr}</div><div class="stat-label">Est. outstanding cost</div></div>
   `;
 
   if (visible.length === 0) {
